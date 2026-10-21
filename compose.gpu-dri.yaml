@@ -1,0 +1,8 @@
+# Intel / AMD GPU via /dev/dri (Mesa Vulkan drivers are in the image).
+# RENDER_GID must be the host's "render" group id: getent group render | cut -d: -f3
+services:
+  upscaler:
+    devices:
+      - /dev/dri:/dev/dri
+    group_add:
+      - "${RENDER_GID:?Set RENDER_GID to the host render group id (getent group render)}"

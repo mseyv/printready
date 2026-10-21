@@ -39,3 +39,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# AI engine binaries/models (scripts/setup-realesrgan.sh)
+/engines/
+/test-results/
+/playwright-report/
+!.env.example

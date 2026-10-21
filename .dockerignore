@@ -1,0 +1,14 @@
+# Never send secrets, local engines or build output to the build context.
+.env*
+!.env.example
+.git
+.next
+node_modules
+engines
+test-results
+playwright-report
+coverage
+*.log
+Dockerfile
+.dockerignore
+compose*.yaml
