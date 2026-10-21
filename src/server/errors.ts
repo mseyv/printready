@@ -29,6 +29,6 @@ export function toErrorResponse(err: unknown, context: string) {
   if (err instanceof PublicError) {
     return jsonError(err.code, err.message, err.status, { issues: err.issues });
   }
-  console.error(`[upscaler] ${context}:`, err instanceof Error ? err.message : err);
+  console.error(`[printready] ${context}:`, err instanceof Error ? err.message : err);
   return jsonError("INTERNAL_ERROR", "Something went wrong on the server. Please try again.", 500);
 }

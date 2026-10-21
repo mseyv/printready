@@ -51,11 +51,11 @@ async function run(opts: ReplicateOptions, req: UpscaleRequest): Promise<void> {
       res = await doFetch(url, { ...init, headers: { ...headers, ...init.headers }, signal: req.signal });
     } catch (err) {
       if (req.signal.aborted) throw req.signal.reason;
-      console.error("[upscaler] replicate network error:", (err as Error).message);
+      console.error("[printready] replicate network error:", (err as Error).message);
       throw new EngineError("Could not reach the AI inference service.", "INFERENCE_UNAVAILABLE");
     }
     if (!res.ok) {
-      console.error(`[upscaler] replicate ${init.method ?? "GET"} ${new URL(url).pathname} -> ${res.status}`);
+      console.error(`[printready] replicate ${init.method ?? "GET"} ${new URL(url).pathname} -> ${res.status}`);
       if (res.status === 429) throw new EngineError("The AI inference service is busy. Please try again shortly.", "INFERENCE_BUSY");
       if (res.status === 401 || res.status === 403) throw new EngineError("The AI inference service rejected the server's credentials.", "INFERENCE_UNAVAILABLE");
       throw new EngineError("The AI inference service returned an error.");
@@ -99,7 +99,7 @@ async function run(opts: ReplicateOptions, req: UpscaleRequest): Promise<void> {
     }
 
     if (prediction.status !== "succeeded" || !prediction.output) {
-      console.error(`[upscaler] replicate prediction ${prediction.status}:`, prediction.error ?? "no output");
+      console.error(`[printready] replicate prediction ${prediction.status}:`, prediction.error ?? "no output");
       const oom = /out of memory|CUDA/i.test(prediction.error ?? "");
       throw new EngineError(oom ? "The image is too large for the AI inference service." : "AI inference failed.");
     }

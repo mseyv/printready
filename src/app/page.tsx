@@ -23,7 +23,7 @@ export default function Home() {
       <header className="border-b">
         <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:px-6">
           <Link href="/" className="flex items-center gap-2 rounded-md font-semibold tracking-tight outline-none focus-visible:ring-3 focus-visible:ring-ring/50">
-            <Logo /> Upscaler
+            <Logo /> PrintReady
           </Link>
           <nav aria-label="Main">
             <ul className="flex items-center gap-1 text-sm">
@@ -102,7 +102,7 @@ DELETE /api/upscale/:jobId          → cancel and delete immediately`}
 
       <footer className="border-t">
         <div className="mx-auto max-w-7xl px-4 py-6 text-xs text-muted-foreground sm:px-6">
-          Upscaler · Real-ESRGAN © Xintao Wang et al., BSD-3-Clause
+          PrintReady · Real-ESRGAN © Xintao Wang et al., BSD-3-Clause
         </div>
       </footer>
     </>

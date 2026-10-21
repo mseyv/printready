@@ -36,7 +36,7 @@ const envSchema = z.object({
   MAX_DPI: int(10_000),
 
   // Jobs & storage
-  UPSCALE_TMP_DIR: z.string().default(path.join(os.tmpdir(), "upscaler-jobs")),
+  UPSCALE_TMP_DIR: z.string().default(path.join(os.tmpdir(), "printready-jobs")),
   JOB_TTL_MINUTES: int(30),
   JOB_TIMEOUT_SECONDS: int(900),
   MAX_CONCURRENT_JOBS: int(1),
@@ -68,7 +68,7 @@ export function getConfig(): ServerConfig {
   }
   const env = parsed.data;
   if (!env.DOWNLOAD_URL_SECRET && process.env.NODE_ENV === "production") {
-    console.warn("[upscaler] DOWNLOAD_URL_SECRET is not set; using a per-process random secret.");
+    console.warn("[printready] DOWNLOAD_URL_SECRET is not set; using a per-process random secret.");
   }
   cached = {
     ...env,

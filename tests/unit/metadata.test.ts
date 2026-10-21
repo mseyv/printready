@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 import { readExifResolution, setPngIccProfile } from "@/server/metadata";
 import { rgbImage } from "../helpers/fixtures";
 
-const dir = mkdtempSync(path.join(os.tmpdir(), "upscaler-meta-"));
+const dir = mkdtempSync(path.join(os.tmpdir(), "printready-meta-"));
 
 describe("setPngIccProfile", () => {
   it("attaches a profile without changing pixel values", async () => {

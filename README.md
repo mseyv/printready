@@ -1,4 +1,4 @@
-# Upscaler
+# PrintReady
 
 AI image upscaling web service. Users upload a JPEG, PNG, WebP or TIFF image, then choose ×2/×4 or exact pixel dimensions and a print DPI. They can compare before and after, then download a file whose pixel size and DPI metadata are verified.
 
@@ -34,15 +34,15 @@ docker compose -f compose.yaml -f compose.gpu-dri.yaml up -d --build
 docker compose -f compose.yaml -f compose.gpu-nvidia.yaml up -d --build
 ```
 
-The app listens on `http://localhost:3000` (change it with `UPSCALER_PORT`). Settings come from `.env` (see `compose.yaml` and the table below). Job files go in the `upscaler-jobs` volume at `/data`. They are deleted automatically, and the volume is wiped on start. A healthcheck polls `/api/config`.
+The app listens on `http://localhost:3000` (change it with `PRINTREADY_PORT`). Settings come from `.env` (see `compose.yaml` and the table below). Job files go in the `printready-jobs` volume at `/data`. They are deleted automatically, and the volume is wiped on start. A healthcheck polls `/api/config`.
 
 Without compose:
 
 ```bash
-docker build -t upscaler .
+docker build -t printready .
 docker run -d -p 3000:3000 -e DOWNLOAD_URL_SECRET=$(openssl rand -hex 32) \
   --device /dev/dri --group-add "$(getent group render | cut -d: -f3)" \
-  --read-only --tmpfs /tmp -v upscaler-jobs:/data --cap-drop ALL upscaler
+  --read-only --tmpfs /tmp -v printready-jobs:/data --cap-drop ALL printready
 ```
 
 Measured on this host (Intel UHD, Alder Lake-N), with a 200×120 source → ×4 using `realesrgan-x4plus`: about 11 s on the iGPU and about 41 s in CPU-only mode. In production, put the container behind a reverse proxy (TLS, `TRUST_PROXY_HOPS=1`).
@@ -106,7 +106,7 @@ See `.env.example` for the full list. The important ones:
 | `MAX_AI_OUTPUT_PIXELS` | 100 MP | Cap on the raw AI pass (×2 with a ×4-only model creates a ×4 intermediate) |
 | `JOB_TTL_MINUTES` / `JOB_TIMEOUT_SECONDS` | 30 / 900 | Retention after completion / per-job processing timeout |
 | `MAX_CONCURRENT_JOBS` / `MAX_QUEUED_JOBS` | 1 / 20 | Queue capacity (`503` when full) |
-| `UPSCALE_TMP_DIR` / `MIN_FREE_DISK_MB` | `$TMPDIR/upscaler-jobs` / 1024 | Private temp storage (`507` when low) |
+| `UPSCALE_TMP_DIR` / `MIN_FREE_DISK_MB` | `$TMPDIR/printready-jobs` / 1024 | Private temp storage (`507` when low) |
 | `RATE_LIMIT_UPLOADS_PER_MINUTE` / `RATE_LIMIT_REQUESTS_PER_MINUTE` | 10 / 240 | Per client IP |
 | `TRUST_PROXY_HOPS` | 0 | Number of reverse proxies that append to `X-Forwarded-For` |
 

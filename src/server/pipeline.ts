@@ -169,7 +169,7 @@ export async function processImage(o: ProcessOptions): Promise<ProcessResult> {
     throw new PublicError("INFERENCE_FAILED", "The AI engine returned an unreadable image.", 502);
   }
   if (aiMeta.width !== plan.aiOutput.width || aiMeta.height !== plan.aiOutput.height) {
-    console.error(`[upscaler] engine returned ${aiMeta.width}x${aiMeta.height}, expected ${plan.aiOutput.width}x${plan.aiOutput.height}`);
+    console.error(`[printready] engine returned ${aiMeta.width}x${aiMeta.height}, expected ${plan.aiOutput.width}x${plan.aiOutput.height}`);
     throw new PublicError("INFERENCE_FAILED", "The AI engine returned an image with unexpected dimensions.", 502);
   }
 
@@ -251,7 +251,7 @@ export async function processImage(o: ProcessOptions): Promise<ProcessResult> {
   }
   if (probe.icc && !out.icc) problems.push("icc lost");
   if (problems.length) {
-    console.error("[upscaler] output verification failed:", problems.join(", "));
+    console.error("[printready] output verification failed:", problems.join(", "));
     throw new PublicError("OUTPUT_VERIFICATION_FAILED", "The output file failed verification and was discarded.", 500);
   }
 

@@ -28,7 +28,7 @@ async function run(
   input: Buffer,
   opts: { target?: Size; scale?: 2 | 4; format?: OutputFormat; dpi?: number; quality?: number; engine?: UpscaleEngine; signal?: AbortSignal } = {},
 ): Promise<ProcessResult & { stages: string[] }> {
-  const workDir = mkdtempSync(path.join(os.tmpdir(), "upscaler-pipe-"));
+  const workDir = mkdtempSync(path.join(os.tmpdir(), "printready-pipe-"));
   const sourcePath = path.join(workDir, "source");
   writeFileSync(sourcePath, input);
   const engine = opts.engine ?? createFakeEngine();
@@ -174,7 +174,7 @@ describe("orientation and colour", () => {
   it("applies EXIF orientation before computing dimensions", async () => {
     // Stored landscape 40×20 with orientation 6 (rotate 90° CW) → displayed portrait 20×40.
     const src = await rgbImage(40, 20).withMetadata({ orientation: 6 }).jpeg().toBuffer();
-    const workDir = mkdtempSync(path.join(os.tmpdir(), "upscaler-orient-"));
+    const workDir = mkdtempSync(path.join(os.tmpdir(), "printready-orient-"));
     writeFileSync(path.join(workDir, "s"), src);
     const probe = await probeImage(path.join(workDir, "s"), limits);
     expect(probe.source).toMatchObject({ width: 20, height: 40, orientation: 6 });
@@ -221,7 +221,7 @@ describe("failures", () => {
   const src = () => rgbImage(32, 24).png().toBuffer();
 
   it("rejects unsupported and corrupted files", async () => {
-    const workDir = mkdtempSync(path.join(os.tmpdir(), "upscaler-bad-"));
+    const workDir = mkdtempSync(path.join(os.tmpdir(), "printready-bad-"));
     const gif = path.join(workDir, "gif");
     writeFileSync(gif, Buffer.from("GIF89a\x01\x00\x01\x00\x00\x00\x00;", "latin1"));
     await expect(probeImage(gif, limits)).rejects.toMatchObject({ code: "UNSUPPORTED_FORMAT" });
@@ -236,7 +236,7 @@ describe("failures", () => {
   });
 
   it("rejects sources over the pixel limit", async () => {
-    const workDir = mkdtempSync(path.join(os.tmpdir(), "upscaler-big-"));
+    const workDir = mkdtempSync(path.join(os.tmpdir(), "printready-big-"));
     writeFileSync(path.join(workDir, "s"), await rgbImage(200, 200).png().toBuffer());
     await expect(probeImage(path.join(workDir, "s"), { ...limits, maxInputPixels: 10_000 })).rejects.toMatchObject({
       code: "INPUT_TOO_LARGE",

@@ -1,11 +1,11 @@
 # syntax=docker/dockerfile:1.7
 #
-# Upscaler: Next.js standalone server + sharp/libvips + Real-ESRGAN ncnn-vulkan.
+# PrintReady: Next.js standalone server + sharp/libvips + Real-ESRGAN ncnn-vulkan.
 #
-#   docker build -t upscaler .
-#   docker run -p 3000:3000 -e DOWNLOAD_URL_SECRET=$(openssl rand -hex 32) upscaler          # CPU (lavapipe)
-#   docker run ... --device /dev/dri --group-add $(getent group render | cut -d: -f3) upscaler  # Intel/AMD GPU
-#   docker run ... --gpus all upscaler                                                         # NVIDIA GPU
+#   docker build -t printready .
+#   docker run -p 3000:3000 -e DOWNLOAD_URL_SECRET=$(openssl rand -hex 32) printready          # CPU (lavapipe)
+#   docker run ... --device /dev/dri --group-add $(getent group render | cut -d: -f3) printready  # Intel/AMD GPU
+#   docker run ... --gpus all printready                                                         # NVIDIA GPU
 #
 # See compose.yaml and the "Docker" section of README.md.
 

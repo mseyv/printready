@@ -245,7 +245,7 @@ export class JobManager {
         quality: fmt.lossy ? job.params.quality : null,
       };
       job.status = "completed";
-      console.info(`[upscaler] job ${job.id} completed in ${Date.now() - started} ms (${result.width}x${result.height})`);
+      console.info(`[printready] job ${job.id} completed in ${Date.now() - started} ms (${result.width}x${result.height})`);
       // Intermediates are no longer needed; keep only source, output and preview.
       await this.pruneIntermediates(job);
     } catch (err) {
@@ -254,7 +254,7 @@ export class JobManager {
       if (reason instanceof PublicError) {
         job.error = { code: reason.code, message: reason.message };
       } else {
-        console.error(`[upscaler] job ${job.id} failed:`, reason instanceof Error ? reason.message : reason);
+        console.error(`[printready] job ${job.id} failed:`, reason instanceof Error ? reason.message : reason);
         job.error = { code: "PROCESSING_FAILED", message: "Processing failed due to an internal error." };
       }
       if (this.jobs.has(job.id)) await this.pruneIntermediates(job, true);

@@ -104,14 +104,14 @@ function run(opts: RealEsrganNcnnOptions, req: UpscaleRequest): Promise<void> {
     };
 
     child.on("error", (err) => {
-      console.error("[upscaler] realesrgan spawn failed:", err.message);
+      console.error("[printready] realesrgan spawn failed:", err.message);
       finish(new EngineError("The AI engine could not be started."));
     });
     child.on("close", (code) => {
       if (req.signal.aborted) return finish(req.signal.reason);
       // The binary sometimes exits 0 after a failure, so the output is also checked.
       if (code !== 0 || !existsSync(req.outputPath)) {
-        console.error(`[upscaler] realesrgan exited with code ${code}:`, stderrTail.split("\n").slice(-5).join(" | "));
+        console.error(`[printready] realesrgan exited with code ${code}:`, stderrTail.split("\n").slice(-5).join(" | "));
         const gpuIssue = /vkCreateInstance|invalid gpu|vkAllocateMemory|out of memory/i.test(stderrTail);
         return finish(
           new EngineError(

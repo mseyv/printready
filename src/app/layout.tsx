@@ -6,7 +6,7 @@ const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Upscaler — AI image upscaling with exact size and DPI control",
+  title: "PrintReady — AI image upscaling with exact size and DPI control",
   description:
     "Upscale images ×2 or ×4 with Real-ESRGAN super-resolution, set exact output pixels and print DPI, compare before and after, and download.",
 };

@@ -27,7 +27,7 @@ describe.skipIf(!available)("Real-ESRGAN ncnn-vulkan (real inference)", () => {
   ] as const)("%s produces an exact ×%i RGB PNG with progress", async (model, scale) => {
     const engine = createRealEsrganNcnnEngine({ binPath: bin, model, gpu: "auto", tile: 0 });
     expect(engine.capabilities.configured).toBe(true);
-    const dir = mkdtempSync(path.join(os.tmpdir(), "upscaler-esrgan-"));
+    const dir = mkdtempSync(path.join(os.tmpdir(), "printready-esrgan-"));
     const input = path.join(dir, "in.png");
     const output = path.join(dir, "out.png");
     await rgbImage(48, 32).png().toFile(input);
@@ -39,7 +39,7 @@ describe.skipIf(!available)("Real-ESRGAN ncnn-vulkan (real inference)", () => {
 
   it("is killed on abort", async () => {
     const engine = createRealEsrganNcnnEngine({ binPath: bin, model: "realesrgan-x4plus", gpu: "auto", tile: 0 });
-    const dir = mkdtempSync(path.join(os.tmpdir(), "upscaler-esrgan-"));
+    const dir = mkdtempSync(path.join(os.tmpdir(), "printready-esrgan-"));
     await rgbImage(256, 256).png().toFile(path.join(dir, "in.png"));
     const ac = new AbortController();
     setTimeout(() => ac.abort(new Error("stop")), 300);

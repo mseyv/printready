@@ -63,7 +63,7 @@ describe("POST /api/upscale → status → download", () => {
       preset: 2,
       filename: "holiday-photo_upscaled-2x_160x90_300dpi.png",
     });
-    expect(JSON.stringify(done)).not.toMatch(/\/tmp|upscaler-test|job-/); // no filesystem paths leak
+    expect(JSON.stringify(done)).not.toMatch(/\/tmp|printready-test|job-/); // no filesystem paths leak
 
     const res = await download(get(done.downloadUrl!), ctx(job.id));
     expect(res.status).toBe(200);
