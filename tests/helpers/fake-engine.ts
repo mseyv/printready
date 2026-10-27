@@ -1,4 +1,5 @@
 import sharp from "sharp";
+import { MODEL_IDS, type FaceEnhancer } from "@/lib/shared/models";
 import type { UpscaleEngine, UpscaleRequest } from "@/server/engines/types";
 import { EngineError } from "@/server/engines/types";
 
@@ -10,6 +11,8 @@ import { EngineError } from "@/server/engines/types";
 export function createFakeEngine(
   opts: {
     nativeScales?: number[];
+    faceEnhancers?: FaceEnhancer[];
+    tiling?: boolean;
     behaviour?: "ok" | "fail" | "wrong-size" | "hang";
     onCall?: (req: UpscaleRequest) => void;
   } = {},
@@ -19,7 +22,10 @@ export function createFakeEngine(
       id: "fake",
       label: "Fake (tests)",
       configured: true,
-      nativeScales: opts.nativeScales ?? [2, 4],
+      models: MODEL_IDS.map((id) => ({ id, nativeScales: opts.nativeScales ?? [2, 4], available: true })),
+      defaultModel: "realesrgan-x4plus",
+      faceEnhancers: opts.faceEnhancers ?? ["gfpgan", "codeformer"],
+      tiling: opts.tiling ?? true,
       maxInputPixels: null,
       reportsProgress: true,
     },

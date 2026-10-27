@@ -1,10 +1,11 @@
 import { spawn } from "node:child_process";
 import { accessSync, constants, existsSync } from "node:fs";
 import path from "node:path";
+import { MODEL_IDS, MODEL_INFO, type EngineModel, type ModelId } from "@/lib/shared/models";
 import { EngineError, type UpscaleEngine, type UpscaleRequest } from "./types";
 
-/** Models shipped with the official Real-ESRGAN ncnn-vulkan release and their native scales. */
-const MODEL_SCALES: Record<string, number[]> = {
+/** Native scales of the models the official ncnn-vulkan binary can run (it rejects any other model name). */
+const MODEL_SCALES: Partial<Record<ModelId, number[]>> = {
   "realesrgan-x4plus": [4],
   "realesrgan-x4plus-anime": [4],
   "realesr-animevideov3": [2, 4],
@@ -13,26 +14,32 @@ const MODEL_SCALES: Record<string, number[]> = {
 export interface RealEsrganNcnnOptions {
   binPath?: string;
   modelsDir?: string;
+  /** Default model, used when a request does not choose one. */
   model: string;
   gpu: string;
+  /** Tile size when a request does not set one (0 = auto). */
   tile: number;
 }
 
 /**
  * Local inference with the Real-ESRGAN ncnn-vulkan binary
  * (https://github.com/xinntao/Real-ESRGAN-ncnn-vulkan). Runs on any Vulkan GPU.
+ * Face restoration (GFPGAN/CodeFormer) is not part of this binary.
  */
 export function createRealEsrganNcnnEngine(opts: RealEsrganNcnnOptions): UpscaleEngine {
-  const nativeScales = MODEL_SCALES[opts.model];
-  const reason = checkInstall(opts, nativeScales);
+  const models = MODEL_IDS.map((id) => describeModel(opts, id));
+  const reason = checkInstall(opts, models);
 
   return {
     capabilities: {
       id: "realesrgan-ncnn",
-      label: `Real-ESRGAN (${opts.model}, local GPU)`,
+      label: "Real-ESRGAN (local GPU)",
       configured: reason === null,
       reason: reason ?? undefined,
-      nativeScales: nativeScales ?? [],
+      models,
+      defaultModel: isModelId(opts.model) ? opts.model : "realesrgan-x4plus",
+      faceEnhancers: [],
+      tiling: true,
       maxInputPixels: null,
       reportsProgress: true,
     },
@@ -40,36 +47,51 @@ export function createRealEsrganNcnnEngine(opts: RealEsrganNcnnOptions): Upscale
   };
 }
 
-function checkInstall(opts: RealEsrganNcnnOptions, scales: number[] | undefined): string | null {
+const isModelId = (id: string): id is ModelId => (MODEL_IDS as readonly string[]).includes(id);
+
+function modelsDirOf(opts: RealEsrganNcnnOptions) {
+  return opts.modelsDir ?? path.join(path.dirname(opts.binPath ?? ""), "models");
+}
+
+function describeModel(opts: RealEsrganNcnnOptions, id: ModelId): EngineModel {
+  const nativeScales = MODEL_SCALES[id];
+  if (!nativeScales) {
+    return { id, nativeScales: [], available: false, reason: `${MODEL_INFO[id].label} is not supported by the Real-ESRGAN ncnn-vulkan binary.` };
+  }
+  const missing = nativeScales.some((scale) => !existsSync(path.join(modelsDirOf(opts), `${modelName(id, scale)}.param`)));
+  if (missing) {
+    return { id, nativeScales, available: false, reason: `${MODEL_INFO[id].label} model files are not installed on this server.` };
+  }
+  return { id, nativeScales, available: true };
+}
+
+function checkInstall(opts: RealEsrganNcnnOptions, models: EngineModel[]): string | null {
   if (!opts.binPath) return "AI upscaling is not configured: REALESRGAN_BIN is not set.";
   try {
     accessSync(opts.binPath, constants.X_OK);
   } catch {
     return "AI upscaling is not configured: the Real-ESRGAN binary was not found or is not executable.";
   }
-  if (!scales) return `AI upscaling is not configured: unknown model "${opts.model}".`;
-  const modelsDir = opts.modelsDir ?? path.join(path.dirname(opts.binPath), "models");
-  if (!existsSync(path.join(modelsDir, `${modelName(opts.model, scales[0])}.param`))) {
-    return "AI upscaling is not configured: model files are missing.";
-  }
+  const def = models.find((m) => m.id === opts.model);
+  if (!def || !MODEL_SCALES[def.id]) return `AI upscaling is not configured: unknown model "${opts.model}".`;
+  if (!def.available) return "AI upscaling is not configured: model files are missing.";
   return null;
 }
 
 /** animevideov3 ships one file per scale; the x4 models have a single file. */
-function modelName(model: string, scale: number) {
+function modelName(model: ModelId, scale: number) {
   return model === "realesr-animevideov3" ? `${model}-x${scale}` : model;
 }
 
 function run(opts: RealEsrganNcnnOptions, req: UpscaleRequest): Promise<void> {
-  const modelsDir = opts.modelsDir ?? path.join(path.dirname(opts.binPath!), "models");
   const args = [
     "-i", req.inputPath,
     "-o", req.outputPath,
-    "-n", opts.model,
+    "-n", req.model,
     "-s", String(req.scale),
-    "-m", modelsDir,
+    "-m", modelsDirOf(opts),
     "-f", "png",
-    "-t", String(opts.tile),
+    "-t", String(req.tileSize ?? opts.tile),
   ];
   if (opts.gpu !== "auto") args.push("-g", opts.gpu);
 

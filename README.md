@@ -79,7 +79,7 @@ upload ─► signature sniff ─► probe (oriented size, limits) ─► queue 
 | Method | Path | Notes |
 |---|---|---|
 | `GET` | `/api/config` | Engine capabilities and limits (no secrets). |
-| `POST` | `/api/upscale` | multipart: `image`, `scale` (2\|4), `width?`, `height?`, `lockAspect` (true\|false), `dpi`, `format` (png\|jpeg\|webp\|tiff), `quality?` (1–100). Optional `Idempotency-Key` header. → `202 { job, pollInterval }` |
+| `POST` | `/api/upscale` | multipart: `image`, `scale` (2\|4), `width?`, `height?`, `lockAspect` (true\|false), `dpi`, `format` (png\|jpeg\|webp\|tiff), `quality?` (1–100), `model?` (default: the engine's), `faceEnhance` (none\|gfpgan\|codeformer, default none), `tileSize?` (256\|400\|512\|1024; omitted = engine decides). Options the engine does not support are rejected with `422`; `GET /api/config` lists what it supports. Optional `Idempotency-Key` header. → `202 { job, pollInterval }` |
 | `GET` | `/api/upscale/:jobId` | `status`: queued \| processing \| completed \| failed, plus `stage`, `progress`, `output` metadata and signed `downloadUrl`/`previewUrl`. `410` once expired. |
 | `GET` | `/api/upscale/:jobId/download?exp&sig` | The file, with `Content-Disposition: attachment; filename=…_upscaled-2x_3840x2160_300dpi.png` |
 | `GET` | `/api/upscale/:jobId/preview?exp&sig` | Inline rendition for the comparison view (a WebP for TIFF output). |
@@ -96,8 +96,8 @@ See `.env.example` for the full list. The important ones:
 |---|---|---|
 | `UPSCALE_ENGINE` | `none` | `realesrgan-ncnn`, `replicate` or `none` |
 | `REALESRGAN_BIN`, `REALESRGAN_MODELS_DIR` | – | Absolute paths printed by `npm run setup:engine` |
-| `REALESRGAN_MODEL` | `realesrgan-x4plus` | `realesrgan-x4plus` (photos, native ×4), `realesrgan-x4plus-anime`, `realesr-animevideov3` (fast, native ×2/×4) |
-| `REALESRGAN_GPU`, `REALESRGAN_TILE` | `auto`, `0` | GPU index; tile size (lower, e.g. `200`, for low-VRAM GPUs) |
+| `REALESRGAN_MODEL` | `realesrgan-x4plus` | Default model: `realesrgan-x4plus` (photos, native ×4), `realesrgan-x4plus-anime` (Anime 6B), `realesr-animevideov3` (fast, native ×2/×4). Users can pick any installed model per request. |
+| `REALESRGAN_GPU`, `REALESRGAN_TILE` | `auto`, `0` | GPU index; tile size used when a request does not enable tiling (lower, e.g. `200`, for low-VRAM GPUs) |
 | `REPLICATE_API_TOKEN` | – | Enables the hosted engine (server-side only) |
 | `REPLICATE_MODEL_VERSION` | `f121d640…` | Pin of `nightmareai/real-esrgan`. Check it against the model page before deploying. |
 | `DOWNLOAD_URL_SECRET` | random per process | **Required in production** (≥ 32 chars). Signs download URLs. |
@@ -118,10 +118,11 @@ See `.env.example` for the full list. The important ones:
 2. `npm run setup:engine` installs v0.2.5.0 (binary and models, about 45 MB) into `./engines/realesrgan`.
 3. Set `UPSCALE_ENGINE=realesrgan-ncnn`, `REALESRGAN_BIN` and `REALESRGAN_MODELS_DIR` in `.env.local`, then restart.
 4. Limits and performance: VRAM is not the limit, because the binary tiles automatically; use `REALESRGAN_TILE` to cut memory use. Time grows linearly with source pixels × scale². `realesrgan-x4plus` is heavy: on this Intel UHD (Alder Lake-N) iGPU, a 256×160 source → ×4 took about 10 s. A discrete GPU is much faster. `realesr-animevideov3` is roughly 10–20× faster and suits illustrations. Size `JOB_TIMEOUT_SECONDS` and `MAX_INPUT_PIXELS` for your hardware.
+5. Per-request options: model choice and tile size are supported. The official binary cannot run `realesr-general-x4v3` and has no face restoration, so those options appear disabled in the UI.
 
 ### Option B: Replicate (hosted)
 
-Set `UPSCALE_ENGINE=replicate` and `REPLICATE_API_TOKEN`. Images are uploaded to Replicate's file API, processed, downloaded, and the uploaded file is then deleted. The hosted model's GPU limits how big a source can be. `REPLICATE_MAX_INPUT_PIXELS` (default 2 MP) is a conservative guard, so tune it after checking the model's current limits. This adapter is covered only by tests with mocked fetch; it has not been run against the live service (no token was available).
+Set `UPSCALE_ENGINE=replicate` and `REPLICATE_API_TOKEN`. The hosted model is RealESRGAN x4plus only, with optional GFPGAN face enhancement (`faceEnhance=gfpgan`) and no tile setting. Images are uploaded to Replicate's file API, processed, downloaded, and the uploaded file is then deleted. The hosted model's GPU limits how big a source can be. `REPLICATE_MAX_INPUT_PIXELS` (default 2 MP) is a conservative guard, so tune it after checking the model's current limits. This adapter is covered only by tests with mocked fetch; it has not been run against the live service (no token was available).
 
 ### Adding another engine
 

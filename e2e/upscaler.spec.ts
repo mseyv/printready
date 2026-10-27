@@ -57,6 +57,27 @@ test("aspect lock recalculates; unlocking edits independently; custom size is fl
   await expect(heightInput(page)).toHaveValue("216");
 });
 
+test("AI model, face enhancement and tiling follow the engine's capabilities", async ({ page, request }) => {
+  const config = await (await request.get("/api/config")).json();
+  await upload(page);
+  const model = page.getByRole("combobox", { name: "Model" });
+  await expect(model).toHaveText(/RealESRGAN x4plus/);
+
+  const faces = page.getByRole("switch", { name: /Face enhancement/ });
+  if (config.engine.faceEnhancers.length === 0) await expect(faces).toBeDisabled();
+
+  await page.getByText("Advanced settings").click();
+  const tiling = page.getByRole("switch", { name: /Use tiling/ });
+  if (!config.engine.tiling) {
+    await expect(tiling).toBeDisabled();
+    return;
+  }
+  await tiling.click();
+  await expect(page.getByRole("radio", { name: "512" })).toBeChecked();
+  await page.getByRole("radio", { name: "256" }).check({ force: true });
+  await expect(page.getByText("tiles 256 px").first()).toBeVisible();
+});
+
 test("rejects unsupported files with a clear message", async ({ page }) => {
   await page.goto("/");
   await expect(page.getByText(/Drag an image here/).first()).toBeAttached();
@@ -67,7 +88,7 @@ test("rejects unsupported files with a clear message", async ({ page }) => {
 test("shows limit errors and disables processing", async ({ page }) => {
   await upload(page);
   await widthInput(page).fill("5000");
-  await expect(page.getByText(/AI engine supports up to ×4/)).toBeVisible();
+  await expect(page.getByText(/supports up to ×4/)).toBeVisible();
   await expect(page.getByRole("button", { name: "Upscale Image" })).toBeDisabled();
 });
 

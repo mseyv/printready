@@ -1,5 +1,6 @@
 import { readFile, writeFile } from "node:fs/promises";
 import sharp from "sharp";
+import { MODEL_IDS, MODEL_INFO } from "@/lib/shared/models";
 import { EngineError, type UpscaleEngine, type UpscaleRequest } from "./types";
 
 const API = "https://api.replicate.com/v1";
@@ -22,7 +23,8 @@ interface Prediction {
 
 /**
  * Hosted inference via Replicate's `nightmareai/real-esrgan` model
- * (RealESRGAN_x4plus; ×2 is produced by the model's own outscale step).
+ * (RealESRGAN_x4plus; ×2 is produced by the model's own outscale step; optional GFPGAN
+ * face restoration). The model has no choice of network and no tile setting.
  * The token stays server-side; clients never talk to Replicate directly.
  */
 export function createReplicateEngine(opts: ReplicateOptions): UpscaleEngine {
@@ -33,7 +35,14 @@ export function createReplicateEngine(opts: ReplicateOptions): UpscaleEngine {
       label: "Real-ESRGAN (Replicate)",
       configured,
       reason: configured ? undefined : "AI upscaling is not configured: REPLICATE_API_TOKEN is not set.",
-      nativeScales: [2, 4],
+      models: MODEL_IDS.map((id) =>
+        id === "realesrgan-x4plus"
+          ? { id, nativeScales: [2, 4], available: true }
+          : { id, nativeScales: [], available: false, reason: `${MODEL_INFO[id].label} is not offered by the hosted engine.` },
+      ),
+      defaultModel: "realesrgan-x4plus",
+      faceEnhancers: ["gfpgan"],
+      tiling: false,
       maxInputPixels: opts.maxInputPixels,
       reportsProgress: false,
     },
@@ -79,7 +88,7 @@ async function run(opts: ReplicateOptions, req: UpscaleRequest): Promise<void> {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           version: opts.version,
-          input: { image: file.urls.get, scale: req.scale, face_enhance: false },
+          input: { image: file.urls.get, scale: req.scale, face_enhance: req.faceEnhance === "gfpgan" },
         }),
       })
     ).json()) as Prediction;

@@ -9,6 +9,7 @@ import { GET as download } from "@/app/api/upscale/[jobId]/download/route";
 import { GET as preview } from "@/app/api/upscale/[jobId]/preview/route";
 import { setEngineForTests } from "@/server/engines";
 import { getJobManager } from "@/server/jobs";
+import type { UpscaleRequest } from "@/server/engines/types";
 import { createFakeEngine } from "../helpers/fake-engine";
 import { rgbaImage, rgbImage } from "../helpers/fixtures";
 
@@ -164,6 +165,34 @@ describe("validation", () => {
 
     res = await create(upload(png, { ...defaults, width: "80", height: "80", lockAspect: "false" }));
     expect(res.status).toBe(202);
+  });
+
+  it("passes model, face enhancement and tile size to the engine and echoes them", async () => {
+    const calls: UpscaleRequest[] = [];
+    setEngineForTests(createFakeEngine({ onCall: (req) => calls.push(req) }));
+    const fields = { ...defaults, model: "realesrgan-x4plus-anime", faceEnhance: "gfpgan", tileSize: "512" };
+    const done = await waitFor((await submit(await rgbImage(40, 20).png().toBuffer(), fields)).id);
+    expect(done.status).toBe("completed");
+    const expected = { model: "realesrgan-x4plus-anime", faceEnhance: "gfpgan", tileSize: 512 };
+    expect(done.requested).toMatchObject(expected);
+    expect(calls[0]).toMatchObject(expected);
+  });
+
+  it("defaults to the engine's model, no face enhancement and engine-chosen tiles", async () => {
+    const done = await waitFor((await submit(await rgbImage(40, 20).png().toBuffer())).id);
+    expect(done.requested).toMatchObject({ model: "realesrgan-x4plus", faceEnhance: null, tileSize: null });
+  });
+
+  it("rejects options the engine does not support with 422", async () => {
+    setEngineForTests(createFakeEngine({ faceEnhancers: [], tiling: false }));
+    const png = await rgbImage(40, 20).png().toBuffer();
+    let res = await create(upload(png, { ...defaults, faceEnhance: "codeformer" }));
+    expect(res.status).toBe(422);
+    expect((await err(res)).issues?.map((i) => i.code)).toEqual(["FACE_ENHANCER_UNAVAILABLE"]);
+    res = await create(upload(png, { ...defaults, tileSize: "256" }));
+    expect((await err(res)).issues?.map((i) => i.code)).toEqual(["TILING_UNSUPPORTED"]);
+    res = await create(upload(png, { ...defaults, model: "esrgan-unknown" }));
+    expect((await err(res)).code).toBe("INVALID_PARAMETERS");
   });
 
   it("returns 503 when no engine is configured — never a fake result", async () => {

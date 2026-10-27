@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 import { IssueList } from "./issue-list";
 
 const FORMAT_HINT: Record<OutputFormat, string> = {
-  png: "Lossless · transparency",
+  png: "Lossless · recommended",
   jpeg: "Small · no transparency",
   webp: "Small · transparency",
   tiff: "Lossless · print workflows",

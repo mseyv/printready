@@ -10,6 +10,7 @@ import { mkdir, readdir, rm, statfs } from "node:fs/promises";
 import path from "node:path";
 import { buildOutputFilename } from "@/lib/shared/filename";
 import { OUTPUT_FORMAT_INFO } from "@/lib/shared/formats";
+import type { EnhanceOptions } from "@/lib/shared/models";
 import type { Issue, UpscalePlan } from "@/lib/shared/plan";
 import type {
   JobStage,
@@ -40,7 +41,10 @@ export interface Job {
   dir: string;
   sourcePath: string;
   originalName: string;
-  params: Required<Omit<UpscaleFields, "quality" | "lockAspect">> & { quality: number; lockAspect: boolean };
+  params: Required<Omit<UpscaleFields, "quality" | "lockAspect" | keyof EnhanceOptions>> & {
+    quality: number;
+    lockAspect: boolean;
+  } & EnhanceOptions;
   probe: ProbeResult;
   plan: UpscalePlan;
   warnings: Issue[];
@@ -208,6 +212,7 @@ export class JobManager {
         format: job.params.format,
         quality: job.params.quality,
         dpi: job.params.dpi,
+        options: { model: job.params.model, faceEnhance: job.params.faceEnhance, tileSize: job.params.tileSize },
         engine: getEngine(),
         signal: job.abort.signal,
         onStage: (stage) => {
@@ -311,6 +316,9 @@ export class JobManager {
         height: job.params.height,
         dpi: job.params.dpi,
         format: job.params.format,
+        model: job.params.model,
+        faceEnhance: job.params.faceEnhance,
+        tileSize: job.params.tileSize,
       },
       source: job.probe.source,
       warnings: job.warnings,

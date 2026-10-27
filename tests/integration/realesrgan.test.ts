@@ -19,6 +19,16 @@ describe.skipIf(!available)("Real-ESRGAN ncnn-vulkan (real inference)", () => {
       configured: false,
     });
     expect(createRealEsrganNcnnEngine({ binPath: bin, model: "no-such-model", gpu: "auto", tile: 0 }).capabilities.configured).toBe(false);
+    expect(createRealEsrganNcnnEngine({ binPath: bin, model: "realesr-general-x4v3", gpu: "auto", tile: 0 }).capabilities.configured).toBe(false);
+  });
+
+  it("offers only the models the binary can run, with tiling and no face enhancement", () => {
+    const caps = createRealEsrganNcnnEngine({ binPath: bin, model: "realesrgan-x4plus", gpu: "auto", tile: 0 }).capabilities;
+    expect(caps.models.filter((m) => m.available).map((m) => m.id)).toEqual(
+      expect.arrayContaining(["realesrgan-x4plus", "realesrgan-x4plus-anime", "realesr-animevideov3"]),
+    );
+    expect(caps.models.find((m) => m.id === "realesr-general-x4v3")).toMatchObject({ available: false });
+    expect(caps).toMatchObject({ faceEnhancers: [], tiling: true });
   });
 
   it.each([
@@ -32,7 +42,16 @@ describe.skipIf(!available)("Real-ESRGAN ncnn-vulkan (real inference)", () => {
     const output = path.join(dir, "out.png");
     await rgbImage(48, 32).png().toFile(input);
     const progress: number[] = [];
-    await engine.upscale({ inputPath: input, outputPath: output, scale, signal: new AbortController().signal, onProgress: (p) => progress.push(p) });
+    await engine.upscale({
+      inputPath: input,
+      outputPath: output,
+      scale,
+      model,
+      faceEnhance: null,
+      tileSize: 256,
+      signal: new AbortController().signal,
+      onProgress: (p) => progress.push(p),
+    });
     expect(await sharp(output).metadata()).toMatchObject({ width: 48 * scale, height: 32 * scale, format: "png" });
     expect(progress.length).toBeGreaterThan(0);
   }, 180_000);
@@ -44,7 +63,15 @@ describe.skipIf(!available)("Real-ESRGAN ncnn-vulkan (real inference)", () => {
     const ac = new AbortController();
     setTimeout(() => ac.abort(new Error("stop")), 300);
     await expect(
-      engine.upscale({ inputPath: path.join(dir, "in.png"), outputPath: path.join(dir, "out.png"), scale: 4, signal: ac.signal }),
+      engine.upscale({
+        inputPath: path.join(dir, "in.png"),
+        outputPath: path.join(dir, "out.png"),
+        scale: 4,
+        model: "realesrgan-x4plus",
+        faceEnhance: null,
+        tileSize: null,
+        signal: ac.signal,
+      }),
     ).rejects.toThrow("stop");
   }, 60_000);
 });

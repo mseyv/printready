@@ -6,13 +6,16 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { matchPreset } from "@/lib/shared/dimensions";
 import { ACCEPT_ATTRIBUTE, OUTPUT_FORMAT_INFO } from "@/lib/shared/formats";
+import { FACE_ENHANCER_LABEL, MODEL_INFO } from "@/lib/shared/models";
 import type { Issue } from "@/lib/shared/plan";
+import { AdvancedSettings } from "./advanced-settings";
 import { CompareViewer } from "./compare-viewer";
 import { DpiSettings } from "./dpi-settings";
 import { Dropzone, pickFile } from "./dropzone";
 import { ExportSettings } from "./export-settings";
 import { FactorPicker } from "./factor-picker";
 import { IssueList } from "./issue-list";
+import { ModelSettings } from "./model-settings";
 import { OutputDimensions } from "./output-dimensions";
 import { ProcessingPanel } from "./processing-panel";
 import { ResultPanel } from "./result-panel";
@@ -121,11 +124,21 @@ export function Upscaler() {
           )}
         </Section>
 
-        <Section step={2} title="Upscale factor" description="Applies to width and height.">
+        <Section step={2} title="AI model" description="Choose the network that matches your image.">
+          <ModelSettings
+            engine={config?.engine ?? null}
+            settings={settings}
+            onChange={u.update}
+            errors={errors ?? []}
+            disabled={busy}
+          />
+        </Section>
+
+        <Section step={3} title="Upscale factor" description="Applies to width and height.">
           <FactorPicker original={source} value={settings.factor} custom={custom} onChange={u.setFactor} disabled={settingsDisabled} />
         </Section>
 
-        <Section step={3} title="Output Dimensions" description="Exact pixel size of the final image.">
+        <Section step={4} title="Output Dimensions" description="Exact pixel size of the final image.">
           {source ? (
             <OutputDimensions
               original={source}
@@ -145,7 +158,7 @@ export function Upscaler() {
           )}
         </Section>
 
-        <Section step={4} title="Output Resolution (DPI)" description="Print metadata written into the file.">
+        <Section step={5} title="Output Resolution (DPI)" description="Print metadata written into the file.">
           <DpiSettings
             size={settings.size}
             dpi={settings.dpi}
@@ -156,7 +169,7 @@ export function Upscaler() {
           />
         </Section>
 
-        <Section step={5} title="Export">
+        <Section step={6} title="Export">
           <ExportSettings
             format={settings.format}
             quality={settings.quality}
@@ -165,6 +178,15 @@ export function Upscaler() {
             disabled={busy}
           />
         </Section>
+
+        <AdvancedSettings
+          engine={config?.engine ?? null}
+          tiling={settings.tiling}
+          tileSize={settings.tileSize}
+          onChange={u.update}
+          errors={errors ?? []}
+          disabled={busy}
+        />
 
         <div className="space-y-3 lg:sticky lg:bottom-0 lg:z-20 lg:-mx-2 lg:rounded-t-xl lg:border-x lg:border-t lg:bg-background/95 lg:p-3 lg:pb-4 lg:shadow-[0_-8px_24px_-12px_rgb(0_0_0/0.15)] lg:backdrop-blur">
           <IssueList issues={generalErrors} tone="error" />
@@ -176,6 +198,11 @@ export function Upscaler() {
             <p className="text-center text-xs text-muted-foreground tabular-nums">
               {settings.size.width.toLocaleString("en-US")} × {settings.size.height.toLocaleString("en-US")} px · {settings.dpi} DPI ·{" "}
               {OUTPUT_FORMAT_INFO[settings.format].label}
+              <span className="block">
+                {MODEL_INFO[settings.model].label}
+                {settings.faceEnhance && ` · ${FACE_ENHANCER_LABEL[settings.faceModel]} faces`}
+                {settings.tiling && ` · tiles ${settings.tileSize} px`}
+              </span>
             </p>
           )}
         </div>

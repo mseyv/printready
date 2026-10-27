@@ -13,6 +13,7 @@ import {
   scaleSize,
 } from "./dimensions";
 import { OUTPUT_FORMAT_INFO, type OutputFormat } from "./formats";
+import { FACE_ENHANCER_LABEL, MODEL_INFO, type EngineModel, type EnhanceOptions, type FaceEnhancer, type ModelId } from "./models";
 
 export interface ProcessingLimits {
   maxUploadBytes: number;
@@ -32,15 +33,20 @@ export interface EngineCapabilities {
   configured: boolean;
   /** Human-readable reason when not configured. */
   reason?: string;
-  /** Scales the model produces natively, ascending (e.g. [4] for RealESRGAN_x4plus). */
-  nativeScales: number[];
+  /** Models the engine knows about; unavailable ones carry a reason. */
+  models: EngineModel[];
+  defaultModel: ModelId;
+  /** Face restoration models the engine can apply (empty: none). */
+  faceEnhancers: FaceEnhancer[];
+  /** Whether the engine accepts a per-request tile size. */
+  tiling: boolean;
   /** Largest source the engine accepts, if it has its own limit. */
   maxInputPixels: number | null;
   /** Whether the engine reports real progress (otherwise the UI stays indeterminate). */
   reportsProgress: boolean;
 }
 
-export type IssueField = "image" | "width" | "height" | "dpi" | "format" | "engine";
+export type IssueField = "image" | "width" | "height" | "dpi" | "format" | "engine" | "model" | "faceEnhance" | "tileSize";
 
 export interface Issue {
   code: string;
@@ -68,6 +74,7 @@ export interface PlanInput {
   format: OutputFormat;
   dpi: number;
   hasAlpha: boolean;
+  options: EnhanceOptions;
   engine: EngineCapabilities;
   limits: ProcessingLimits;
 }
@@ -81,7 +88,7 @@ export interface PlanResult {
 const fmt = (n: number) => n.toLocaleString("en-US");
 
 export function planUpscale(input: PlanInput): PlanResult {
-  const { original, target, format, dpi, hasAlpha, engine, limits } = input;
+  const { original, target, format, dpi, hasAlpha, options, engine, limits } = input;
   const errors: Issue[] = [];
   const warnings: Issue[] = [];
   const formatInfo = OUTPUT_FORMAT_INFO[format];
@@ -152,6 +159,29 @@ export function planUpscale(input: PlanInput): PlanResult {
     });
   }
 
+  const model = engine.models.find((m) => m.id === options.model);
+  if (engine.configured && !model?.available) {
+    errors.push({
+      code: "MODEL_UNAVAILABLE",
+      field: "model",
+      message: model?.reason ?? `${MODEL_INFO[options.model].label} is not available on this server.`,
+    });
+  }
+  if (engine.configured && options.faceEnhance && !engine.faceEnhancers.includes(options.faceEnhance)) {
+    errors.push({
+      code: "FACE_ENHANCER_UNAVAILABLE",
+      field: "faceEnhance",
+      message: `${FACE_ENHANCER_LABEL[options.faceEnhance]} face enhancement is not available on this server.`,
+    });
+  }
+  if (engine.configured && options.tileSize !== null && !engine.tiling) {
+    errors.push({
+      code: "TILING_UNSUPPORTED",
+      field: "tileSize",
+      message: `${engine.label} does not support a custom tile size.`,
+    });
+  }
+
   const scale = effectiveScale(original, target);
   const required = Math.max(scale.x, scale.y);
   if (scale.x < 1 && scale.y < 1) {
@@ -162,13 +192,14 @@ export function planUpscale(input: PlanInput): PlanResult {
     });
   }
 
-  const maxNative = engine.nativeScales.at(-1) ?? 0;
-  const aiScale = engine.nativeScales.find((s) => s >= required - 1e-9);
-  if (aiScale === undefined) {
+  const nativeScales = model?.nativeScales ?? [];
+  const maxNative = nativeScales.at(-1) ?? 0;
+  const aiScale = nativeScales.find((s) => s >= required - 1e-9);
+  if (aiScale === undefined && model?.available) {
     errors.push({
       code: "SCALE_TOO_LARGE",
       field: "width",
-      message: `This output needs ${formatScale(required)} enlargement; the AI engine supports up to ×${maxNative}.`,
+      message: `This output needs ${formatScale(required)} enlargement; ${MODEL_INFO[options.model].label} supports up to ×${maxNative}.`,
     });
   }
 

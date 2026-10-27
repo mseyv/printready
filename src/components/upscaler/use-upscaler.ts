@@ -10,6 +10,7 @@ import {
   type UpscaleFactor,
 } from "@/lib/shared/dimensions";
 import type { OutputFormat } from "@/lib/shared/formats";
+import { DEFAULT_TILE_SIZE, type EnhanceOptions, type FaceEnhancer, type ModelId, type TileSize } from "@/lib/shared/models";
 import { planUpscale, type Issue, type PlanResult } from "@/lib/shared/plan";
 import {
   DEFAULT_DPI,
@@ -28,6 +29,11 @@ export interface Settings {
   dpi: number;
   format: OutputFormat;
   quality: number;
+  model: ModelId;
+  faceEnhance: boolean;
+  faceModel: FaceEnhancer;
+  tiling: boolean;
+  tileSize: TileSize;
 }
 
 export type RunState =
@@ -44,7 +50,21 @@ const INITIAL_SETTINGS: Settings = {
   dpi: DEFAULT_DPI,
   format: DEFAULT_FORMAT,
   quality: DEFAULT_QUALITY,
+  model: "realesrgan-x4plus",
+  faceEnhance: false,
+  faceModel: "gfpgan",
+  tiling: false,
+  tileSize: DEFAULT_TILE_SIZE,
 };
+
+/** What the server receives for the enhancement settings (switches off → null). */
+export function enhanceOptions(s: Settings): EnhanceOptions {
+  return {
+    model: s.model,
+    faceEnhance: s.faceEnhance ? s.faceModel : null,
+    tileSize: s.tiling ? s.tileSize : null,
+  };
+}
 
 /** Give up polling after this long without any successful response. */
 const MAX_OFFLINE_MS = 120_000;
@@ -75,6 +95,8 @@ export function useUpscaler() {
       (configPromise.current = getConfig().then(
         (c) => {
           setConfig(c);
+          const face = c.engine.faceEnhancers[0];
+          setSettings((s) => ({ ...s, model: c.engine.defaultModel, faceModel: face ?? s.faceModel }));
           return c;
         },
         (err: unknown) => {
@@ -186,7 +208,7 @@ export function useUpscaler() {
   }, [source, settings.factor, setFactor]);
 
   const update = useCallback(
-    (patch: Partial<Pick<Settings, "dpi" | "format" | "quality">>) => {
+    (patch: Partial<Omit<Settings, "factor" | "size" | "locked">>) => {
       settingsChanged();
       setSettings((s) => ({ ...s, ...patch }));
     },
@@ -202,6 +224,7 @@ export function useUpscaler() {
       format: settings.format,
       dpi: settings.dpi,
       hasAlpha: source.hasAlpha,
+      options: enhanceOptions(settings),
       engine: config.engine,
       limits: config.limits,
     });
@@ -229,6 +252,7 @@ export function useUpscaler() {
           dpi: settings.dpi,
           format: settings.format,
           quality: settings.quality,
+          options: enhanceOptions(settings),
           idempotencyKey: idempotencyKey.current,
         },
         (progress) => setRun({ phase: "uploading", progress }),

@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { formatNumber, formatPixelCount, formatScale, printSize } from "@/lib/shared/dimensions";
 import { INPUT_FORMAT_LABEL, OUTPUT_FORMAT_INFO } from "@/lib/shared/formats";
+import { FACE_ENHANCER_LABEL, MODEL_INFO } from "@/lib/shared/models";
 import type { JobStatusResponse } from "@/lib/shared/schema";
 import { formatBytes } from "@/lib/client/source-image";
 import { cn } from "@/lib/utils";
@@ -73,7 +74,9 @@ export function ResultPanel({
       </dl>
 
       <div className="flex flex-wrap gap-1.5 text-xs">
-        <Badge variant="outline">AI ×{out.aiScale}{out.resampled ? " + Lanczos" : ""}</Badge>
+        <Badge variant="outline">{MODEL_INFO[job.requested.model].label} ×{out.aiScale}{out.resampled ? " + Lanczos" : ""}</Badge>
+        {job.requested.faceEnhance && <Badge variant="outline">{FACE_ENHANCER_LABEL[job.requested.faceEnhance]} face enhancement</Badge>}
+        {job.requested.tileSize && <Badge variant="outline">Tiles {job.requested.tileSize} px</Badge>}
         <Badge variant="outline">Source {INPUT_FORMAT_LABEL[src.format]}</Badge>
         {src.orientation !== 1 && <Badge variant="outline">EXIF orientation applied</Badge>}
         {out.colorProfile === "preserved" && <Badge variant="outline">Colour profile preserved</Badge>}

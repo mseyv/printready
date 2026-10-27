@@ -1,6 +1,7 @@
 import path from "node:path";
 import type { NextRequest } from "next/server";
 import type { Size } from "@/lib/shared/dimensions";
+import type { EnhanceOptions } from "@/lib/shared/models";
 import { planUpscale, type Issue } from "@/lib/shared/plan";
 import { DEFAULT_QUALITY, upscaleFieldsSchema, type CreateJobResponse, type UpscaleFields } from "@/lib/shared/schema";
 import { getConfig } from "@/server/config";
@@ -16,7 +17,8 @@ const IDEMPOTENCY_RE = /^[A-Za-z0-9_-]{8,64}$/;
 
 /**
  * POST /api/upscale — multipart form:
- *   image (file), scale (2|4), width?, height?, lockAspect (true|false), dpi, format, quality?
+ *   image (file), scale (2|4), width?, height?, lockAspect (true|false), dpi, format, quality?,
+ *   model?, faceEnhance (none|gfpgan|codeformer), tileSize? (256|400|512|1024)
  * Header `Idempotency-Key` makes retries/double-clicks return the same job.
  * Responds 202 with the job status; poll GET /api/upscale/:jobId.
  */
@@ -64,6 +66,11 @@ export async function POST(request: NextRequest) {
     const probe = await probeImage(sourcePath, cfg.limits);
     const original: Size = { width: probe.source.width, height: probe.source.height };
     const target = resolveTarget(original, params);
+    const options: EnhanceOptions = {
+      model: params.model ?? engine.capabilities.defaultModel,
+      faceEnhance: params.faceEnhance,
+      tileSize: params.tileSize ?? null,
+    };
 
     const result = planUpscale({
       original,
@@ -71,6 +78,7 @@ export async function POST(request: NextRequest) {
       format: params.format,
       dpi: params.dpi,
       hasAlpha: probe.source.hasAlpha,
+      options,
       engine: engine.capabilities,
       limits: cfg.limits,
     });
@@ -99,6 +107,7 @@ export async function POST(request: NextRequest) {
         dpi: params.dpi,
         format: params.format,
         quality: params.quality ?? DEFAULT_QUALITY,
+        ...options,
       },
       probe,
       plan: result.plan,
@@ -122,6 +131,6 @@ function created(job: CreateJobResponse["job"], status: number) {
 }
 
 function fieldOf(key: PropertyKey | undefined): Issue["field"] {
-  if (key === "width" || key === "height" || key === "dpi" || key === "format") return key;
+  if (key === "width" || key === "height" || key === "dpi" || key === "format" || key === "model" || key === "faceEnhance" || key === "tileSize") return key;
   return undefined;
 }

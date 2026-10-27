@@ -5,11 +5,12 @@ import sharp from "sharp";
 import { describe, expect, it } from "vitest";
 import { scaleSize, type Size } from "@/lib/shared/dimensions";
 import type { OutputFormat } from "@/lib/shared/formats";
+import type { EnhanceOptions } from "@/lib/shared/models";
 import { planUpscale, type ProcessingLimits } from "@/lib/shared/plan";
 import { PublicError } from "@/server/errors";
 import { readExifResolution } from "@/server/metadata";
 import { probeImage, processImage, type ProcessResult } from "@/server/pipeline";
-import type { UpscaleEngine } from "@/server/engines/types";
+import type { UpscaleEngine, UpscaleRequest } from "@/server/engines/types";
 import { createFakeEngine } from "../helpers/fake-engine";
 import { rgbaImage, rgbImage } from "../helpers/fixtures";
 
@@ -26,7 +27,7 @@ const limits: ProcessingLimits = {
 
 async function run(
   input: Buffer,
-  opts: { target?: Size; scale?: 2 | 4; format?: OutputFormat; dpi?: number; quality?: number; engine?: UpscaleEngine; signal?: AbortSignal } = {},
+  opts: { target?: Size; scale?: 2 | 4; format?: OutputFormat; dpi?: number; quality?: number; engine?: UpscaleEngine; signal?: AbortSignal; options?: EnhanceOptions } = {},
 ): Promise<ProcessResult & { stages: string[] }> {
   const workDir = mkdtempSync(path.join(os.tmpdir(), "printready-pipe-"));
   const sourcePath = path.join(workDir, "source");
@@ -35,12 +36,14 @@ async function run(
   const probe = await probeImage(sourcePath, limits);
   const original = { width: probe.source.width, height: probe.source.height };
   const format = opts.format ?? "png";
+  const options = opts.options ?? { model: "realesrgan-x4plus", faceEnhance: null, tileSize: null };
   const { plan, errors } = planUpscale({
     original,
     target: opts.target ?? scaleSize(original, opts.scale ?? 2),
     format,
     dpi: opts.dpi ?? 300,
     hasAlpha: probe.source.hasAlpha,
+    options,
     engine: engine.capabilities,
     limits,
   });
@@ -54,6 +57,7 @@ async function run(
     format,
     quality: opts.quality ?? 90,
     dpi: opts.dpi ?? 300,
+    options,
     engine,
     signal: opts.signal ?? new AbortController().signal,
     onStage: (s) => stages.push(s),
@@ -86,6 +90,15 @@ describe("output dimensions", () => {
     const r = await run(src, { scale: 2, engine });
     expect(calls).toEqual([4]);
     expect(await sharp(r.outputPath).metadata()).toMatchObject({ width: 80, height: 60 });
+  });
+
+  it("passes the model, face enhancer and tile size to the engine", async () => {
+    const src = await rgbImage(40, 30).png().toBuffer();
+    const calls: UpscaleRequest[] = [];
+    const engine = createFakeEngine({ onCall: (req) => calls.push(req) });
+    const options = { model: "realesrgan-x4plus-anime", faceEnhance: "codeformer", tileSize: 256 } as const;
+    await run(src, { scale: 4, engine, options });
+    expect(calls[0]).toMatchObject(options);
   });
 
   it("unlocked aspect produces the requested (stretched) size, without cropping", async () => {

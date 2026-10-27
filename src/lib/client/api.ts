@@ -7,6 +7,7 @@ import type {
   PublicConfig,
 } from "@/lib/shared/schema";
 import type { OutputFormat } from "@/lib/shared/formats";
+import type { EnhanceOptions } from "@/lib/shared/models";
 
 export class ApiError extends Error {
   constructor(
@@ -70,6 +71,7 @@ export interface CreateJobInput {
   dpi: number;
   format: OutputFormat;
   quality: number;
+  options: EnhanceOptions;
   idempotencyKey: string;
 }
 
@@ -88,6 +90,9 @@ export function createJob(
   form.append("dpi", String(input.dpi));
   form.append("format", input.format);
   form.append("quality", String(input.quality));
+  form.append("model", input.options.model);
+  form.append("faceEnhance", input.options.faceEnhance ?? "none");
+  if (input.options.tileSize !== null) form.append("tileSize", String(input.options.tileSize));
 
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();

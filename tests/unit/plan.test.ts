@@ -11,15 +11,23 @@ const limits: ProcessingLimits = {
   minDpi: 1,
   maxDpi: 10_000,
 };
-const x4only: EngineCapabilities = {
+const withScales = (nativeScales: number[]): EngineCapabilities => ({
   id: "t",
   label: "T",
   configured: true,
-  nativeScales: [4],
+  models: [
+    { id: "realesrgan-x4plus", nativeScales, available: true },
+    { id: "realesrgan-x4plus-anime", nativeScales: [4], available: true },
+    { id: "realesr-general-x4v3", nativeScales: [], available: false, reason: "Not installed." },
+  ],
+  defaultModel: "realesrgan-x4plus",
+  faceEnhancers: ["gfpgan"],
+  tiling: false,
   maxInputPixels: null,
   reportsProgress: false,
-};
-const both = { ...x4only, nativeScales: [2, 4] };
+});
+const x4only = withScales([4]);
+const both = withScales([2, 4]);
 
 const base: PlanInput = {
   original: { width: 1920, height: 1080 },
@@ -27,6 +35,7 @@ const base: PlanInput = {
   format: "png",
   dpi: 300,
   hasAlpha: false,
+  options: { model: "realesrgan-x4plus", faceEnhance: null, tileSize: null },
   engine: both,
   limits,
 };
@@ -89,8 +98,23 @@ describe("planUpscale", () => {
   });
 
   it("reports an unconfigured engine", () => {
-    const r = planUpscale({ ...base, engine: { ...both, configured: false, nativeScales: [] } });
-    expect(codes(r)).toContain("ENGINE_NOT_CONFIGURED");
+    const r = planUpscale({ ...base, engine: { ...both, configured: false, models: [] } });
+    expect(codes(r)).toEqual(["ENGINE_NOT_CONFIGURED"]);
+  });
+
+  it("uses the chosen model's native scales", () => {
+    const r = planUpscale({ ...base, options: { ...base.options, model: "realesrgan-x4plus-anime" } });
+    expect(r.plan).toMatchObject({ aiScale: 4, resampled: true });
+  });
+
+  it("rejects models, face enhancers and tiling the engine does not offer", () => {
+    const unavailable = planUpscale({ ...base, options: { ...base.options, model: "realesr-general-x4v3" } });
+    expect(unavailable.errors).toEqual([{ code: "MODEL_UNAVAILABLE", field: "model", message: "Not installed." }]);
+    expect(codes(planUpscale({ ...base, options: { ...base.options, model: "realesr-animevideov3" } }))).toEqual(["MODEL_UNAVAILABLE"]);
+    expect(codes(planUpscale({ ...base, options: { ...base.options, faceEnhance: "gfpgan" } }))).toEqual([]);
+    expect(codes(planUpscale({ ...base, options: { ...base.options, faceEnhance: "codeformer" } }))).toEqual(["FACE_ENHANCER_UNAVAILABLE"]);
+    expect(codes(planUpscale({ ...base, options: { ...base.options, tileSize: 512 } }))).toEqual(["TILING_UNSUPPORTED"]);
+    expect(codes(planUpscale({ ...base, options: { ...base.options, tileSize: 512 }, engine: { ...both, tiling: true } }))).toEqual([]);
   });
 
   it("respects engine input limits", () => {

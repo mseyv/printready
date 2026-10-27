@@ -1,11 +1,13 @@
+import type { EnhanceOptions } from "@/lib/shared/models";
 import type { EngineCapabilities } from "@/lib/shared/plan";
 
-export interface UpscaleRequest {
+/** Model, face restoration and tile size were validated against `capabilities` before the job was queued. */
+export interface UpscaleRequest extends EnhanceOptions {
   /** 8-bit RGB PNG (no alpha; alpha is upscaled separately by the pipeline). */
   inputPath: string;
   /** Where the engine must write an RGB PNG of exactly input × scale. */
   outputPath: string;
-  /** One of `capabilities.nativeScales`. */
+  /** One of the chosen model's `nativeScales`. */
   scale: number;
   signal: AbortSignal;
   /** Report progress in [0, 1]. Engines that cannot measure progress never call it. */

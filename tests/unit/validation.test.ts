@@ -18,7 +18,17 @@ describe("request schema", () => {
       lockAspect: true,
       width: 3000,
       quality: 80,
+      faceEnhance: null,
     });
+  });
+
+  it("parses enhancement options", () => {
+    expect(upscaleFieldsSchema.parse({ ...ok, model: "realesrgan-x4plus-anime", faceEnhance: "codeformer", tileSize: "400" })).toMatchObject({
+      model: "realesrgan-x4plus-anime",
+      faceEnhance: "codeformer",
+      tileSize: 400,
+    });
+    expect(upscaleFieldsSchema.parse({ ...ok, faceEnhance: "none" }).faceEnhance).toBeNull();
   });
 
   it.each([
@@ -33,6 +43,10 @@ describe("request schema", () => {
     [{ ...ok, quality: "0" }],
     [{ ...ok, quality: "101" }],
     [{ ...ok, lockAspect: "yes" }],
+    [{ ...ok, model: "RealESRGAN_x4plus.pth" }],
+    [{ ...ok, faceEnhance: "true" }],
+    [{ ...ok, tileSize: "300" }],
+    [{ ...ok, tileSize: "0" }],
     [{ ...ok, extra: "1" }],
     [{ scale: "2", format: "png" }],
   ])("rejects %o", (fields) => {
@@ -42,7 +56,7 @@ describe("request schema", () => {
 
 describe("resolveTarget (server-side dimension resolution)", () => {
   const original = { width: 1920, height: 1080 };
-  const p = (x: Partial<UpscaleFields>): UpscaleFields => ({ scale: 2, dpi: 300, format: "png", lockAspect: true, ...x });
+  const p = (x: Partial<UpscaleFields>): UpscaleFields => ({ scale: 2, dpi: 300, format: "png", lockAspect: true, faceEnhance: null, ...x });
 
   it("defaults to the preset factor", () => {
     expect(resolveTarget(original, p({ scale: 4 }))).toEqual({ width: 7680, height: 4320 });

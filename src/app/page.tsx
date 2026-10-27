@@ -92,7 +92,9 @@ export default function Home() {
           </p>
           <pre className="mt-4 overflow-x-auto rounded-lg border bg-muted/40 p-4 font-mono text-xs leading-relaxed">
 {`POST   /api/upscale                 multipart: image, scale=2|4, width?, height?, lockAspect,
-                                    dpi, format=png|jpeg|webp|tiff, quality?   → 202 { job }
+                                    dpi, format=png|jpeg|webp|tiff, quality?, model?,
+                                    faceEnhance=none|gfpgan|codeformer,
+                                    tileSize?=256|400|512|1024                 → 202 { job }
 GET    /api/upscale/:jobId          → { status: queued|processing|completed|failed, output, downloadUrl }
 GET    /api/upscale/:jobId/download?exp=…&sig=…   → the file (attachment)
 DELETE /api/upscale/:jobId          → cancel and delete immediately`}

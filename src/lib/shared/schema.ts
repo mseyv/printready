@@ -5,6 +5,7 @@
 import { z } from "zod";
 import { UPSCALE_FACTORS, type Size, type UpscaleFactor } from "./dimensions";
 import { OUTPUT_FORMATS, type InputFormat, type OutputFormat } from "./formats";
+import { FACE_ENHANCERS, MODEL_IDS, TILE_SIZES, type EnhanceOptions, type ModelId, type TileSize } from "./models";
 import type { EngineCapabilities, Issue, ProcessingLimits } from "./plan";
 
 export const DPI_PRESETS = [72, 96, 150, 300, 600] as const;
@@ -30,11 +31,17 @@ export const upscaleFieldsSchema = z
     dpi: intField,
     format: z.enum(OUTPUT_FORMATS),
     quality: intField.pipe(z.number().int().min(1).max(100)).optional(),
+    /** Omitted: the engine's default model. */
+    model: z.enum(MODEL_IDS).optional(),
+    faceEnhance: z.enum(["none", ...FACE_ENHANCERS]).default("none").transform((v) => (v === "none" ? null : v)),
+    /** Omitted: the engine picks the tile size. */
+    tileSize: z.enum(TILE_SIZES.map(String) as ["256", "400", "512", "1024"]).transform((v) => Number(v) as TileSize).optional(),
   })
   .strict();
 
-export type UpscaleFields = Omit<z.output<typeof upscaleFieldsSchema>, "scale"> & {
+export type UpscaleFields = Omit<z.output<typeof upscaleFieldsSchema>, "scale" | "model"> & {
   scale: UpscaleFactor;
+  model?: ModelId;
 };
 
 export type JobStatus = "queued" | "processing" | "completed" | "failed";
@@ -81,7 +88,7 @@ export interface JobStatusResponse {
     height: number;
     dpi: number;
     format: OutputFormat;
-  };
+  } & EnhanceOptions;
   source: SourceInfo;
   warnings: Issue[];
   output: OutputInfo | null;

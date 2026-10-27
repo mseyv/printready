@@ -14,6 +14,7 @@ import type { ProcessingLimits, UpscalePlan } from "@/lib/shared/plan";
 import type { JobStage, SourceInfo } from "@/lib/shared/schema";
 import { PublicError } from "./errors";
 import { readExifResolution, readJfifDensity, setPngIccProfile, withJfifDensity } from "./metadata";
+import type { EnhanceOptions } from "@/lib/shared/models";
 import type { UpscaleEngine } from "./engines/types";
 import { EngineError } from "./engines/types";
 
@@ -97,6 +98,7 @@ export interface ProcessOptions {
   format: OutputFormat;
   quality: number;
   dpi: number;
+  options: EnhanceOptions;
   engine: UpscaleEngine;
   signal: AbortSignal;
   onStage: (stage: JobStage) => void;
@@ -152,6 +154,7 @@ export async function processImage(o: ProcessOptions): Promise<ProcessResult> {
       inputPath: p("rgb.png"),
       outputPath: p("ai.png"),
       scale: plan.aiScale,
+      ...o.options,
       signal: o.signal,
       onProgress: o.onProgress,
     });
